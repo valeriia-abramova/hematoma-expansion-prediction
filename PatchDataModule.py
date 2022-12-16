@@ -33,21 +33,17 @@ def load_prepared_trueta_dataset(path:str):
     """
 
     prepared_dict = {}
-    # all patients ids
-    cases = ['pt018', 'pt100', 'pt169', 'pt153', 'pt013', 'pt067', 'pt171', 'pt109', 'pt068', 'pt063', 'pt009', 'pt161', 'pt114', 'pt087', 'pt133', 
-    'pt134', 'pt167', 'pt090', 'pt130', 'pt101', 'pt119', 'pt120', 'pt135', 'pt042', 'pt045', 'pt028', 'pt159', 'pt121', 'pt001', 'pt071', 'pt150', 
-    'pt010', 'pt070', 'pt077', 'pt085', 'pt016', 'pt023', 'pt128', 'pt080', 'pt079', 'pt151', 'pt007', 'pt086', 'pt011', 'pt138', 'pt065', 'pt102', 
-    'pt116', 'pt084', 'pt124', 'pt025', 'pt051', 'pt021', 'pt003', 'pt047', 'pt131', 'pt049', 'pt015', 'pt032', 'pt141', 'pt136', 'pt041', 'pt099', 
-    'pt111', 'pt137', 'pt069', 'pt081', 'pt062', 'pt060', 'pt110', 'pt027', 'pt092', 'pt118', 'pt020', 'pt022', 'pt139', 'pt145', 'pt166', 
-    'pt031', 'pt165', 'pt064', 'pt037', 'pt017', 'pt078', 'pt019', 'pt142', 'pt033', 'pt122', 'pt088', 'pt083', 'pt012', 'pt030', 'pt061', 
-    'pt152', 'pt163', 'pt048', 'pt005', 'pt044', 'pt072', 'pt076', 'pt075', 'pt039', 'pt164', 'pt132', 'pt125', 'pt073', 
-    'pt066', 'pt149', 'pt002', 'pt040', 'pt052', 'pt034', 'pt129', 'pt055', 'pt123', 'pt097', 'pt058', 'pt144']
-    # cases = cases[:5]
+    # synthetic dataset 174 patients
+    cases = [f.path for f in os.scandir(path) if f.is_dir()]
+    cases = [case.split('/')[-1] for case in cases]
+    cases = [case for case in cases if 'pt080' not in case]
+    cases = sorted(cases)
     for case in cases:
-        basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case)))).get_fdata()
-        basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case)))).get_fdata() > 0).astype(np.int), axis=0)
-        # basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask/{}.nii.gz'.format(case)))).get_fdata()
-        fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/data/{}/doublemask_img.nii.gz'.format(case)))).get_fdata()
+        patient = case.split('_')[0]
+        basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata()
+        basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata() > 0).astype(np.int), axis=0)
+        basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(patient)))).get_fdata()
+        fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'CT_SS.nii.gz'))).get_fdata()
         basal = np.stack([basal], axis = 0)
         fu1 = np.stack([fu1], axis = 0)
         
@@ -55,6 +51,7 @@ def load_prepared_trueta_dataset(path:str):
         prepared_dict[case] = {
             'basal': basal,
             'basalbrainMask': basalbrainMask,
+            'lesionMask': basal_lesionMask,
             'fu1': fu1
             }
     return prepared_dict
@@ -87,7 +84,7 @@ def load_test_dict(path:str):
     for case in cases:
         basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case)))).get_fdata()
         basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case)))).get_fdata() > 0).astype(np.int), axis=0)
-        # basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask/{}.nii.gz'.format(case)))).get_fdata()
+        basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(case)))).get_fdata()
         fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV7/{}/FU1/CT_SS.nii.gz'.format(case)))).get_fdata()
         basal = np.stack([basal], axis = 0)
         fu1 = np.stack([fu1], axis = 0)
@@ -96,6 +93,7 @@ def load_test_dict(path:str):
         prepared_dict[case] = {
             'basal': basal,
             'basalbrainMask': basalbrainMask,
+            'lesionMask': basal_lesionMask,
             'fu1': fu1
             }
     return prepared_dict
@@ -163,8 +161,8 @@ def generate_stroke_instructions(data: dict, patch_size: tuple, patch_step: tupl
             norm_parms = find_normalization_parameters(case_dict['basal'])
             patch_instruction =[]
 
-            image_centers = sample_centers_uniform(np.squeeze(case_dict['basal'], axis = 0), patch_shape= patch_size, max_centers= patches_per_image,extraction_step=(16,16,16), mask=np.squeeze(case_dict['basalbrainMask'],axis=0))
-            # image_centers = sample_centers_balanced(label_img=case_dict['lesionMask'],patch_shape=patch_size,num_centers=patches_per_image,mask=np.squeeze(case_dict['basalbrainMask'],axis=0))
+            # image_centers = sample_centers_uniform(np.squeeze(case_dict['basal'], axis = 0), patch_shape= patch_size, max_centers= patches_per_image,extraction_step=(16,16,16), mask=np.squeeze(case_dict['basalbrainMask'],axis=0))
+            image_centers = sample_centers_balanced(label_img=case_dict['lesionMask'],patch_shape=patch_size,num_centers=patches_per_image,mask=np.squeeze(case_dict['basalbrainMask'],axis=0))
             # (np.squeeze(case_dict['basal'],axis=0), patch_shape= patch_size, max_centers= patches_per_image,extraction_step=(16,16,16), mask=np.squeeze(case_dict['basalbrainMask'],axis=0))
             patch_instruction += [{'case_id': case_id,
                                 'center': center,
@@ -188,8 +186,8 @@ def extract_stroke_patch(instructions: dict, data: dict):
     """
 
     case = data[instructions['case_id']]
-    image = case['input']
-    gt = case['basal']
+    image = case['basal']
+    gt = case['fu1']
     center = instructions['center']
     patch_size = instructions['patch_size']
     do_data_augmentation = instructions['do_data_augmentation']
@@ -520,7 +518,7 @@ class InstructionDataset(Dataset):
 
 class PatchDataModule(pl.LightningDataModule):
     def __init__(self, prepared_data_path, test_path, patch_size, patch_step, do_skull_stripping, 
-                batch_size, num_workers, patches_per_image, validation_fraction=0.2, num_folds=5, fold_split=None, do_data_augmentation=False):
+                batch_size, num_workers, patches_per_image, validation_fraction=0.2, fold_split=None, do_data_augmentation=False):
         super().__init__()
         self.prepared_data_path = prepared_data_path
         self.test_path = test_path
@@ -536,21 +534,15 @@ class PatchDataModule(pl.LightningDataModule):
         self.val_dataset = None
         self.test_dataset = None
         self.fold_index = 0
-        self.num_folds = num_folds
         self.do_data_augmentation = do_data_augmentation
         self.patches_per_image = patches_per_image
-
-        if fold_split is not None:
-            assert num_folds == len(fold_split)
-        self.fold_split = fold_split
-
 
     def setup(self, stage='None'):
         if self.prepared_dict is None:
             self.prepared_dict = load_prepared_trueta_dataset(self.prepared_data_path)
 
         if self.test_dict is None:
-            self.test_dict = load_prepared_trueta_dataset(self.test_path)
+            self.test_dict = load_test_dict(self.test_path)
          
         self.set_fold()
         
@@ -558,7 +550,7 @@ class PatchDataModule(pl.LightningDataModule):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers) 
     
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
     
     def test_dataloader(self):
         return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
@@ -585,14 +577,12 @@ class PatchDataModule(pl.LightningDataModule):
 
     def set_fold(self):
 
-        self.train_val_dict = {case_id: case_values for case_id, case_values in self.prepared_dict.items() 
-                                if case_id in self.fold_split[self.fold_index]['train'][:][:]}
+        self.train_val_dict = {case_id: case_values for case_id, case_values in self.prepared_dict.items()}
 
-        self.test_dict = {case_id: case_values for case_id, case_values in self.test_dict.items() 
-                                if case_id in self.fold_split[self.fold_index]['test']}  
+        self.test_dict = {case_id: case_values for case_id, case_values in self.test_dict.items()}  
 
-        train_dict = dict(list(self.train_val_dict.items())[:int(np.round(len(self.train_val_dict) * (1.0 - self.validation_fraction)))])
-        val_dict = dict(list(self.train_val_dict.items())[int(np.round(len(self.train_val_dict) * (1.0 - self.validation_fraction))):])         
+        train_dict = dict(list(self.train_val_dict.items())[:int(np.round(len(self.train_val_dict) * (1.0 - self.validation_fraction)))+2])
+        val_dict = dict(list(self.train_val_dict.items())[int(np.round(len(self.train_val_dict) * (1.0 - self.validation_fraction)))+2:])         
 
         train_patch_instructions = generate_stroke_instructions(train_dict, self.patch_size, self.patch_step, self.do_data_augmentation, self.patches_per_image)
         val_patch_instructions = generate_stroke_instructions(val_dict, self.patch_size, self.patch_step, self.do_data_augmentation, self.patches_per_image)
@@ -607,7 +597,7 @@ if __name__ == "__main__":
 
     stroke_dict = load_prepared_trueta_dataset(prepared_data_path)
     StrokeDM = PatchDataModule(prepared_data_path=prepared_data_path, 
-                                    patch_size=(32, 32, 32), patch_step=None, do_skull_stripping=False, 
+                                    patch_size=(64,64,8), patch_step=None, do_skull_stripping=False, 
                                     batch_size=16, validation_fraction=0.2, num_workers=NUM_WORKERS, patches_per_image=3000)
 
 #    BrainDM.prepare_data()
