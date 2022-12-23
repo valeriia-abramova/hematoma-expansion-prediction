@@ -38,12 +38,21 @@ def load_prepared_trueta_dataset(path:str):
     cases = [case.split('/')[-1] for case in cases]
     cases = [case for case in cases if 'pt080' not in case]
     cases = sorted(cases)
+
+    # cases = ['pt038', 'pt170', 'pt094', 'pt103', 'pt127', 'pt054', 'pt171',
+    #     'pt095','pt057','pt077','pt043', 'pt005',
+    #     'pt140','pt108','pt098','pt082','pt105']
+    # cases = cases[:2]
+
+
     for case in cases:
         patient = case.split('_')[0]
         basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata()
         basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata() > 0).astype(np.int), axis=0)
-        basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(patient)))).get_fdata()
+        # basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(patient)))).get_fdata()
         fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'CT_SS.nii.gz'))).get_fdata()
+        borderMask = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'diff.nii.gz'))).get_fdata()
+
         basal = np.stack([basal], axis = 0)
         fu1 = np.stack([fu1], axis = 0)
         
@@ -51,7 +60,7 @@ def load_prepared_trueta_dataset(path:str):
         prepared_dict[case] = {
             'basal': basal,
             'basalbrainMask': basalbrainMask,
-            'lesionMask': basal_lesionMask,
+            'lesionMask': borderMask,
             'fu1': fu1
             }
     return prepared_dict
@@ -77,15 +86,17 @@ def load_test_dict(path:str):
 
     prepared_dict = {}
     # all patients ids
-    cases = ['pt038', 'pt170', 'pt094', 'pt103', 'pt127', 'pt054',
-            'pt095','pt057','pt089','pt168','pt113','pt043',
-            'pt140','pt108','pt106','pt098','pt082','pt105']
-    # cases = cases[:5]
+    cases = ['pt038', 'pt170', 'pt094', 'pt103', 'pt127', 'pt054', 'pt171',
+        'pt095','pt057','pt077','pt043', 'pt005',
+        'pt140','pt108','pt098','pt082','pt105']
+
+    # cases = cases[:2]
     for case in cases:
         basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case)))).get_fdata()
         basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case)))).get_fdata() > 0).astype(np.int), axis=0)
         basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(case)))).get_fdata()
         fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV7/{}/FU1/CT_SS.nii.gz'.format(case)))).get_fdata()
+        
         basal = np.stack([basal], axis = 0)
         fu1 = np.stack([fu1], axis = 0)
         
@@ -276,13 +287,23 @@ def sample_centers_balanced(label_img, patch_shape, num_centers, add_rand_offset
 
     centers_labels = {label_id: np.argwhere((label_img == label_id) & (mask != 0.0)) for label_id in label_ids}
 
+    # adding some background patches to see if they will effect background of resulting deformation field
+    # creating several centers from background
+    background = np.argwhere((label_img == 0.0) & (mask == 0.0))
+    background = background[:5]
+
+
     # # Resample (repeating or removing) to appropiate number
 
     # centers_labels = \
         # {k: resample_regular(v, num_centers // len(label_ids)) for k, v in centers_labels.items()}
 
-    centers_labels[label_ids[0]] = resample_regular(centers_labels[label_ids[0]], 0.2*(num_centers))
+    centers_labels[label_ids[0]] = resample_regular(centers_labels[label_ids[0]], 0.2*(num_centers)-5)
     centers_labels[label_ids[1]] = resample_regular(centers_labels[label_ids[1]], 0.8*(num_centers))
+
+    # change several centers from zero label to background centers
+    centers_labels[label_ids[0]] = list(centers_labels[label_ids[0]])
+    centers_labels[label_ids[0]].extend(background)
 
     # Add random offset of up to half the patch size
     if add_rand_offset:
