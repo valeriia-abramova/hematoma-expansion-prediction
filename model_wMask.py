@@ -267,10 +267,18 @@ class FullModel(pl.LightningModule):
         sim_loss = self.sim_loss(img_output, img_target)
         seg_loss = self.seg_loss(mask_output, mask_target)
         loss = dvf_loss + sim_loss + seg_loss
+        if batch_idx == 1:
+            img_output = img_output.detach().cpu().numpy() # BS, CH, X, Y, Z
+            mask_output = mask_output.detach().cpu().numpy() # BS, CH, X, Y, Z
+            columns = []
+            for xi, yi in zip(mask_output, img_output):
+                columns.append(np.concatenate([xij for xij in xi] + [yi[0]], axis=0))
+            grid_arr = np.concatenate(columns, axis=1)
+            nib.Nifti1Image(grid_arr, np.eye(4)).to_filename('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/018-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask/results/batches/batch1_epoch{}.nii.gz'.format(self.current_epoch))
         # dvf_loss = self.dvf_loss(y_hat[0])
         # sim_loss = self.sim_loss(y_hat[1], y)
         # loss = 0.01*dvf_loss + sim_loss
-        self.log('train_loss', loss, on_epoch=True) 
+        self.log_dict({'train_loss': loss, 'dvf_loss' : dvf_loss, 'sim_loss' : sim_loss, 'seg_loss': seg_loss}, on_epoch=True) 
                 
         return {'loss': loss}
     
@@ -290,7 +298,8 @@ class FullModel(pl.LightningModule):
         # loss = 0.01*dvf_loss + sim_loss 
         
         # self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
-        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        # self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log_dict({'val_loss': loss, 'val_dvf_loss' : dvf_loss, 'val_sim_loss' : sim_loss, 'val_seg_loss': seg_loss}, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
         return {'val_loss': loss}  
                     
@@ -303,12 +312,16 @@ class FullModel(pl.LightningModule):
             print(f"> Segmenting test case {case_num} ({n+1}/{len(test_cases)})")
             
 
-            img = np.stack([nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case_num)))).get_fdata()], axis=0)
+            img = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case_num)))).get_fdata()
             # img = (img - np.min(img))/(np.max(img) - np.min(img))
-            img = np.expand_dims(img, axis=0)
+            mask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(case_num)))).get_fdata()
+            # img = np.expand_dims(img, axis=0)
 
             norm_params = find_normalization_parameters(img)
             norm_img = normalize_image(img, norm_params)
+
+            norm_img = np.stack([norm_img, mask], axis = 0)
+            norm_img = np.expand_dims(norm_img, axis=0)
 
             self.eval()
             with torch.no_grad():
@@ -322,6 +335,8 @@ class FullModel(pl.LightningModule):
             # Convert to numpy and Round to save disk space
             # prediction1 = np.round(prediction[0, 1, :, :, :].detach().cpu().numpy(), decimals=4)
             prediction1 = prediction[1][0,0,:,:,:].numpy() # the final prediction
+            prediction_mask = prediction[1][0,1,:,:,:].numpy()
+            prediction_mask = np.where(prediction_mask > 0.5, 1, 0)
             prediction2 = prediction[0].permute(2,3,4,0,1).numpy() # the dvf
      
 
@@ -334,7 +349,10 @@ class FullModel(pl.LightningModule):
             # sitk.WriteImage(prediction2, os.path.join(os.path.join(filepath_out, case_num) + '_dvf.nii.gz'))
 
             nib.Nifti1Image(prediction2, nifti_img.affine, nifti_img.header).to_filename(
-                os.path.join(os.path.join(filepath_out, case_num) + '_dvf08.nii.gz'))
+                os.path.join(os.path.join(filepath_out, case_num) + '_dvf.nii.gz'))
+
+            nib.Nifti1Image(prediction_mask, nifti_img.affine, nifti_img.header).to_filename(
+                os.path.join(os.path.join(filepath_out, case_num) + '_mask.nii.gz'))
 
             
             # image_measures[case_num] = Stroke_DM.compute_image_measures(case_num=case_num, inference_result=np.argmax(prediction[0,:,:,:,:].numpy(),axis=0), 

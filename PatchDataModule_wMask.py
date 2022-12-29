@@ -166,7 +166,7 @@ def generate_stroke_instructions(data: dict, patch_size: tuple, patch_step: tupl
     else: # 3D case
         for case_id, case_dict in data.items(): # For each image (CH, X, Y, Z) and patch size
             # Calculate mean and std to perform image normalization
-            norm_parms = find_normalization_parameters(case_dict['basal'])
+            norm_parms = find_normalization_parameters(case_dict['basal'][0])
             patch_instruction =[]
 
             # image_centers = sample_centers_uniform(np.squeeze(case_dict['basal'], axis = 0), patch_shape= patch_size, max_centers= patches_per_image,extraction_step=(16,16,16), mask=np.squeeze(case_dict['basalbrainMask'],axis=0))
@@ -218,9 +218,12 @@ def extract_stroke_patch(instructions: dict, data: dict):
     # lesion_patch = np.squeeze(lesion_patch, axis=tuple(ax for ax in range(-3, 0, 1) if lesion_patch.shape[ax] == 1))
 
     # Normalize the image_patch
+
+    image_patch[0] = normalize_image(image_patch[0], instructions['norm_params']) # case with mask as additional input channel
+    gt_patch[0] = normalize_image(gt_patch[0], instructions['norm_params'])
   
-    image_patch = normalize_image(image_patch, instructions['norm_params'])
-    gt_patch = normalize_image(gt_patch, instructions['norm_params'])
+    # image_patch = normalize_image(image_patch, instructions['norm_params'])
+    # gt_patch = normalize_image(gt_patch, instructions['norm_params'])
 
     # Transform the patch to a Pytorch tensor
     image_patch_torch = torch.tensor(np.ascontiguousarray(image_patch), dtype=torch.float)
@@ -286,8 +289,8 @@ def sample_centers_balanced(label_img, patch_shape, num_centers, add_rand_offset
 
     # adding some background patches to see if they will effect background of resulting deformation field
     # creating several centers from background
-    background = np.argwhere((label_img == 0.0) & (mask == 0.0))
-    background = background[:5]
+    # background = np.argwhere((label_img == 0.0) & (mask == 0.0))
+    # background = background[:5]
 
 
     # # Resample (repeating or removing) to appropiate number
@@ -295,12 +298,12 @@ def sample_centers_balanced(label_img, patch_shape, num_centers, add_rand_offset
     # centers_labels = \
         # {k: resample_regular(v, num_centers // len(label_ids)) for k, v in centers_labels.items()}
 
-    centers_labels[label_ids[0]] = resample_regular(centers_labels[label_ids[0]], 0.2*(num_centers)-5)
+    centers_labels[label_ids[0]] = resample_regular(centers_labels[label_ids[0]], 0.2*(num_centers))
     centers_labels[label_ids[1]] = resample_regular(centers_labels[label_ids[1]], 0.8*(num_centers))
 
     # change several centers from zero label to background centers
-    centers_labels[label_ids[0]] = list(centers_labels[label_ids[0]])
-    centers_labels[label_ids[0]].extend(background)
+    # centers_labels[label_ids[0]] = list(centers_labels[label_ids[0]])
+    # centers_labels[label_ids[0]].extend(background)
 
     # Add random offset of up to half the patch size
     if add_rand_offset:
@@ -534,7 +537,7 @@ class InstructionDataset(Dataset):
     def __getitem__(self, idx): # Returns a sample from the dataset at a given index
         return self.get_item(self.instructions[idx], self.data)
 
-class PatchDataModule(pl.LightningDataModule):
+class PatchDataModule_wMask(pl.LightningDataModule):
     def __init__(self, prepared_data_path, test_path, patch_size, patch_step, do_skull_stripping, 
                 batch_size, num_workers, patches_per_image, validation_fraction=0.2, fold_split=None, do_data_augmentation=False):
         super().__init__()
@@ -614,7 +617,7 @@ if __name__ == "__main__":
     NUM_WORKERS = 32
 
     stroke_dict = load_prepared_trueta_dataset(prepared_data_path)
-    StrokeDM = PatchDataModule(prepared_data_path=prepared_data_path, 
+    StrokeDM = PatchDataModule_wMask(prepared_data_path=prepared_data_path, 
                                     patch_size=(64,64,8), patch_step=None, do_skull_stripping=False, 
                                     batch_size=16, validation_fraction=0.2, num_workers=NUM_WORKERS, patches_per_image=3000)
 

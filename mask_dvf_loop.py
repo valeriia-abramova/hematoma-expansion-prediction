@@ -4,7 +4,6 @@ import numpy as np
 from PatchDataModule_wMask import *
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-# from Prediction_stroke_lesion.GrowthPrediction.model import FullModel
 import torch
 from model_wMask import *
 from monai.losses.dice import DiceLoss
@@ -13,8 +12,8 @@ torch.cuda.empty_cache()
 
 prepared_data_path = '/home/valeria/Prediction_stroke_lesion/data/Synthetic/'
 test_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/data/'
-results_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/014-patchBalanced80-ppi500-adam00001-bs16-l1loss-ps323232-border-background/results/'
-experiment_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/014-patchBalanced80-ppi500-adam00001-bs16-l1loss-ps323232-border-background/experiment/'
+results_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/018-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask/results/'
+experiment_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/018-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask/experiment/'
 MAX_EPOCHS = 100
 PATIENCE = 20
 subfolder = ['lightning_logs','Model_checkpoints']
@@ -29,9 +28,9 @@ def get_features(name):
     return hook
 
 
-StrokeDM = PatchDataModule(prepared_data_path=prepared_data_path, test_path=test_path,
+StrokeDM = PatchDataModule_wMask(prepared_data_path=prepared_data_path, test_path=test_path,
                                 patch_size=(32,32,32), patch_step=(16,16,16), do_skull_stripping=False, 
-                                batch_size=16, validation_fraction=0.2, num_workers=12, 
+                                batch_size=32, validation_fraction=0.2, num_workers=12, 
                                 do_data_augmentation=False, patches_per_image=500)
 
 # loss function
@@ -118,7 +117,7 @@ image_measures = {}
 
 
 # StrokeDM.set_fold()
-StrokeDM.setup()
+# StrokeDM.setup()
 
 logger = TensorBoardLogger(experiment_path + 'lightning_logs/', log_graph=True )
 
@@ -136,7 +135,7 @@ checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(experiment_path,'Mode
 
 pl.seed_everything(0, workers=True)
 
-model = FullModel(2,3,my_dvfLoss,my_simloss, my_segloss)
+# model = FullModel(2,3,my_dvfLoss,my_simloss, my_segloss)
 
 trainer = pl.Trainer(max_epochs=MAX_EPOCHS,
                     accelerator='gpu',
@@ -147,10 +146,10 @@ trainer = pl.Trainer(max_epochs=MAX_EPOCHS,
                     enable_model_summary=False,
                     logger=logger)
 
-trainer.fit(model, StrokeDM)
+# trainer.fit(model, StrokeDM)
 
-# model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/010-patchBalanced80-ppi500-adam0001-bs16-l1loss-ps323232-border/experiment/Model_checkpoints/trueta-epoch=17.ckpt',in_channels = 1, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss)
-# StrokeDM.setup(stage='test')
+model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/018-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask/experiment/Model_checkpoints/trueta-epoch=99.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
+StrokeDM.setup(stage='test')
 # model.unet.register_forward_hook(get_features('unet'))
 
 test_cases = StrokeDM.get_test_cases()
