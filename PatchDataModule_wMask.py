@@ -33,23 +33,35 @@ def load_prepared_trueta_dataset(path:str):
     """
 
     prepared_dict = {}
-    # synthetic dataset 174 patients
+    # synthetic dataset 168 patients
     cases = [f.path for f in os.scandir(path) if f.is_dir()]
     cases = [case.split('/')[-1] for case in cases]
-    cases = [case for case in cases if 'pt080' not in case]
+    cases = [case for case in cases if 'pt040' not in case]
+    cases = [case for case in cases if 'pt018' not in case]
     cases = sorted(cases)
+    # testCases = ['pt170', 'pt094', 'pt054', 'pt098', 'pt105']
+    # cases = cases + testCases
     # cases = cases[:2]
+    # cases = ['pt038', 'pt170', 'pt094', 'pt103', 'pt127', 'pt054', 'pt171',
+    #     'pt095','pt077','pt043', 'pt005',
+    #     'pt108','pt082','pt018']
     for case in cases:
-        patient = case.split('_')[0]
-        basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata()
-        basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata() > 0).astype(np.int), axis=0)
-        basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(patient)))).get_fdata()
-        fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'CT_SS.nii.gz'))).get_fdata()
-        fu_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'mask.nii.gz'))).get_fdata()
-        borderMask = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'diff.nii.gz'))).get_fdata()
-        # basal_lesionMask = np.round(basal_lesionMask)
-        # borderMask = fu1_lesionMask-basal_lesionMask
-        # borderMask[borderMask == -1.0] = 0.0
+        if '_' in case:
+            patient = case.split('_')[0]
+            basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata()
+            basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata() > 0).astype(np.int), axis=0)
+            basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(patient)))).get_fdata()
+            fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'CT_SS.nii.gz'))).get_fdata()
+            fu_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'mask.nii.gz'))).get_fdata()
+            borderMask = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'diff.nii.gz'))).get_fdata()
+        else:
+            basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case)))).get_fdata()
+            basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case)))).get_fdata() > 0).astype(np.int), axis=0)
+            basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(case)))).get_fdata()
+            fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV7/{}/FU1/CT_SS.nii.gz'.format(case)))).get_fdata()
+            fu_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV7/{}/FU1/hematoma_mask_vicorob_reviewed_reoriented.nii.gz'.format(case)))).get_fdata()
+            borderMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV7/{}/FU1/diff.nii.gz'.format(case)))).get_fdata()
+
         basal = np.stack([basal, basal_lesionMask], axis = 0)
         fu1 = np.stack([fu1, fu_lesionMask], axis = 0)
         
@@ -84,9 +96,18 @@ def load_test_dict(path:str):
     prepared_dict = {}
     # all patients ids
     cases = ['pt038', 'pt170', 'pt094', 'pt103', 'pt127', 'pt054', 'pt171',
-        'pt095','pt057','pt077','pt043', 'pt005',
-        'pt140','pt108','pt098','pt082','pt105']
+        'pt095','pt077','pt043', 'pt005',
+        'pt108','pt082','pt018','pt057',
+        'pt040','pt098']
+    # cases = ['pt057',
+    #     'pt040','pt098']
+    # cases = ['pt038', 'pt103', 'pt127', 'pt171',
+    #     'pt095','pt057','pt077','pt043', 'pt005',
+    #     'pt140','pt108','pt082']
+    # cases = ['pt002', 'pt003', 'pt018', 'pt031', 'pt133']
     # cases = cases[:2]
+    # for fine-tuning on pt094 val on pt170
+
     for case in cases:
         basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case)))).get_fdata()
         basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case)))).get_fdata() > 0).astype(np.int), axis=0)
@@ -297,6 +318,7 @@ def sample_centers_balanced(label_img, patch_shape, num_centers, add_rand_offset
 
     # centers_labels = \
         # {k: resample_regular(v, num_centers // len(label_ids)) for k, v in centers_labels.items()}
+    
 
     centers_labels[label_ids[0]] = resample_regular(centers_labels[label_ids[0]], 0.2*(num_centers))
     centers_labels[label_ids[1]] = resample_regular(centers_labels[label_ids[1]], 0.8*(num_centers))
@@ -602,8 +624,8 @@ class PatchDataModule_wMask(pl.LightningDataModule):
 
         self.test_dict = {case_id: case_values for case_id, case_values in self.test_dict.items()}  
 
-        train_dict = dict(list(self.train_val_dict.items())[:int(np.round(len(self.train_val_dict) * (1.0 - self.validation_fraction)))+2])
-        val_dict = dict(list(self.train_val_dict.items())[int(np.round(len(self.train_val_dict) * (1.0 - self.validation_fraction)))+2:])         
+        train_dict = dict(list(self.train_val_dict.items())[:int(np.round(len(self.train_val_dict) * (1.0 - self.validation_fraction)))+1])
+        val_dict = dict(list(self.train_val_dict.items())[int(np.round(len(self.train_val_dict) * (1.0 - self.validation_fraction)))+1:])         
 
         train_patch_instructions = generate_stroke_instructions(train_dict, self.patch_size, self.patch_step, self.do_data_augmentation, self.patches_per_image)
         val_patch_instructions = generate_stroke_instructions(val_dict, self.patch_size, self.patch_step, self.do_data_augmentation, self.patches_per_image)

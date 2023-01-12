@@ -267,14 +267,14 @@ class FullModel(pl.LightningModule):
         sim_loss = self.sim_loss(img_output, img_target)
         seg_loss = self.seg_loss(mask_output, mask_target)
         loss = dvf_loss + sim_loss + seg_loss
-        if batch_idx == 1:
-            img_output = img_output.detach().cpu().numpy() # BS, CH, X, Y, Z
-            mask_output = mask_output.detach().cpu().numpy() # BS, CH, X, Y, Z
-            columns = []
-            for xi, yi in zip(mask_output, img_output):
-                columns.append(np.concatenate([xij for xij in xi] + [yi[0]], axis=0))
-            grid_arr = np.concatenate(columns, axis=1)
-            nib.Nifti1Image(grid_arr, np.eye(4)).to_filename('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/018-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask/results/batches/batch1_epoch{}.nii.gz'.format(self.current_epoch))
+        # if batch_idx == 1:
+        #     img_output = img_output.detach().cpu().numpy() # BS, CH, X, Y, Z
+        #     mask_output = mask_output.detach().cpu().numpy() # BS, CH, X, Y, Z
+        #     columns = []
+        #     for xi, yi in zip(mask_output, img_output):
+        #         columns.append(np.concatenate([xij for xij in xi] + [yi[0]], axis=0))
+        #     grid_arr = np.concatenate(columns, axis=1)
+        #     nib.Nifti1Image(grid_arr, np.eye(4)).to_filename('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/018-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask/results/batches/batch1_epoch{}.nii.gz'.format(self.current_epoch))
         # dvf_loss = self.dvf_loss(y_hat[0])
         # sim_loss = self.sim_loss(y_hat[1], y)
         # loss = 0.01*dvf_loss + sim_loss
