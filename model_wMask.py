@@ -82,7 +82,7 @@ class MICCAI_model(pl.LightningModule):
         super(MICCAI_model, self).__init__()
         self.loss = loss
         self.return_activated_output = return_activated_output
-        self.activation = nn.Sigmoid()
+        # self.activation = nn.Sigmoid()
 
         self.MaxPool = nn.MaxPool3d(kernel_size=2, stride=2)
 
@@ -312,9 +312,9 @@ class FullModel(pl.LightningModule):
             print(f"> Segmenting test case {case_num} ({n+1}/{len(test_cases)})")
             
 
-            img = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case_num)))).get_fdata()
+            img = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(case_num)))).get_fdata()
             # img = (img - np.min(img))/(np.max(img) - np.min(img))
-            mask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(case_num)))).get_fdata()
+            mask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8_mask_interp/{}.nii.gz'.format(case_num)))).get_fdata()
             # img = np.expand_dims(img, axis=0)
 
             norm_params = find_normalization_parameters(img)
@@ -338,15 +338,17 @@ class FullModel(pl.LightningModule):
             prediction_mask = prediction[1][0,1,:,:,:].numpy()
             prediction_mask = np.where(prediction_mask > 0.5, 1, 0)
             prediction2 = prediction[0].permute(2,3,4,0,1).numpy() # the dvf
+            prediction_mask[img == 0.0] = 0.0
+            prediction1[img == 0.0] = 0.0
      
 
             # prediction1 = (prediction1 - np.min(prediction1))/(np.max(prediction1) - np.min(prediction1))
             # prediction2 = sitk.GetImageFromArray(prediction2)
             
-            nifti_img = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(case_num))))
+            nifti_img = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(case_num))))
             nib.Nifti1Image(prediction1, nifti_img.affine, nifti_img.header).to_filename(
                 os.path.join(os.path.join(filepath_out, case_num) + '_prob.nii.gz'))
-            # sitk.WriteImage(prediction2, os.path.join(os.path.join(filepath_out, case_num) + '_dvf.nii.gz'))
+            
 
             nib.Nifti1Image(prediction2, nifti_img.affine, nifti_img.header).to_filename(
                 os.path.join(os.path.join(filepath_out, case_num) + '_dvf.nii.gz'))

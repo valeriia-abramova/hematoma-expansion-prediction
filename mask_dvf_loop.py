@@ -2,18 +2,19 @@ import json
 
 import numpy as np
 from PatchDataModule_wMask import *
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, ModelSummary
 from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 from model_wMask import *
 from monai.losses.dice import DiceLoss
+# from medcam import medcam
 
 torch.cuda.empty_cache()
 
-prepared_data_path = '/home/valeria/Prediction_stroke_lesion/data/Synthetic/'
+prepared_data_path = '/home/valeria/Prediction_stroke_lesion/data/Synthetic_full/' 
 test_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/data/'
-results_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/024-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as018and019-wopt018pt040intrain/results/'
-experiment_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/024-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as018and019-wopt018pt040intrain/experiment/'
+results_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/049-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as024-onUniform-DATASETV8/results/'
+experiment_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/049-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as024-onUniform-DATASETV8/experiment/'
 MAX_EPOCHS = 1000
 PATIENCE = 20
 subfolder = ['lightning_logs','Model_checkpoints']
@@ -41,24 +42,6 @@ def make_one_hot(labels, classes):
     target = one_hot.scatter_(1, labels.data, 1)
     return target
 
-# class DiceLoss(torch.nn.Module):
-#     def __init__(self, smooth=1., ignore_index=255):
-#         super(DiceLoss, self).__init__()
-#         self.ignore_index = ignore_index
-#         self.smooth = smooth
-
-#     def forward(self, output, target):
-#         if self.ignore_index not in range(target.min(), target.max()):
-#             if (target == self.ignore_index).sum() > 0:
-#                 target[target == self.ignore_index] = target.min()
-#         target = make_one_hot(target.unsqueeze(dim=1), classes=output.size()[1])
-#         output = F.softmax(output, dim=1)
-#         output_flat = output.contiguous().view(-1)
-#         target_flat = target.contiguous().view(-1)
-#         intersection = (output_flat * target_flat).sum()
-#         loss = 1 - ((2. * intersection + self.smooth) /
-#                     (output_flat.sum() + target_flat.sum() + self.smooth))
-#         return loss
 
 
 class SimLoss(nn.Module):
@@ -136,21 +119,27 @@ checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(experiment_path,'Mode
 pl.seed_everything(0, workers=True)
 
 model = FullModel(2,3,my_dvfLoss,my_simloss, my_segloss)
-# model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/018-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask/experiment/Model_checkpoints/trueta-epoch=99.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
+# model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/024-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as018and019-wopt018pt040intrain/experiment/Model_checkpoints/trueta-epoch=74.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
+# model.requires_grad_(False)
+# # model.unet.Conv5.requires_grad_(True)
+# model.regressor.requires_grad_(True)
+# layers = ['unet.Conv1.conv.3', 'unet.Conv2.conv.3', 'unet.Conv3.conv.3','unet.Bottleneck.conv.3','unet.UpConv1.conv.3','unet.UpConv2.conv.3','unet.UpConv3.conv.3']
+# model = medcam.inject(model, output_dir="/home/valeria/Prediction_stroke_lesion//SynthesisGrowth/024-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as018and019-wopt018pt040intrain/gradcam_maps/", backend="gcam" ,save_maps=True, layer = layers)
 
 
 trainer = pl.Trainer(max_epochs=MAX_EPOCHS,
                     accelerator='gpu',
                     devices=[0], 
-                    callbacks=[early_stopping_callback, checkpoint_callback],
+                    # strategy="dp",
+                    callbacks=[early_stopping_callback, checkpoint_callback,ModelSummary(max_depth=-1)],
                     deterministic=False,
                     fast_dev_run=False, 
-                    enable_model_summary=False,
+                    enable_model_summary=True,
                     logger=logger)
 
 trainer.fit(model, StrokeDM)
 
-# model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/018-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask/experiment/Model_checkpoints/trueta-epoch=99.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
+# model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/048-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as024-onDistanceTr-DATASETV8/experiment/Model_checkpoints/trueta-epoch=142.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
 # StrokeDM.setup(stage='test')
 # model.unet.register_forward_hook(get_features('unet'))
 
