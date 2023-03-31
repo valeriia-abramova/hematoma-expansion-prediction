@@ -100,7 +100,7 @@ image_measures = {}
 
 
 # StrokeDM.set_fold()
-StrokeDM.setup()
+# StrokeDM.setup(stage='train')
 
 logger = TensorBoardLogger(experiment_path + 'lightning_logs/', log_graph=True )
 
@@ -118,7 +118,7 @@ checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(experiment_path,'Mode
 
 pl.seed_everything(0, workers=True)
 
-model = FullModel(2,3,my_dvfLoss,my_simloss, my_segloss)
+# model = FullModel(2,3,my_dvfLoss,my_simloss, my_segloss)
 # model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/024-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as018and019-wopt018pt040intrain/experiment/Model_checkpoints/trueta-epoch=74.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
 # model.requires_grad_(False)
 # # model.unet.Conv5.requires_grad_(True)
@@ -137,10 +137,10 @@ trainer = pl.Trainer(max_epochs=MAX_EPOCHS,
                     enable_model_summary=True,
                     logger=logger)
 
-trainer.fit(model, StrokeDM)
+# trainer.fit(model, StrokeDM)
 
-# model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/048-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as024-onDistanceTr-DATASETV8/experiment/Model_checkpoints/trueta-epoch=142.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
-# StrokeDM.setup(stage='test')
+model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/049-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as024-onUniform-DATASETV8/experiment/Model_checkpoints/trueta-epoch=19.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
+StrokeDM.setup(stage='test')
 # model.unet.register_forward_hook(get_features('unet'))
 
 test_cases = StrokeDM.get_test_cases()

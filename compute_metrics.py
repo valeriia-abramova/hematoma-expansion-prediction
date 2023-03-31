@@ -92,20 +92,16 @@ def aaev(ground_truth, prediction, header):
     return  np.abs(vol_ml)
 
 
-cases = ['pt038', 'pt170', 'pt094', 'pt103', 'pt127', 'pt054', 'pt171',
-        'pt095','pt077','pt043', 'pt005',
-        'pt108','pt082','pt018','pt057',
-        'pt040','pt098','pt207','pt208']
-# cases = ['pt038', 'pt170', 'pt094', 'pt103', 'pt127', 'pt054', 'pt171',
-#         'pt095','pt077','pt043', 'pt005',
-#         'pt108','pt018','pt057',
-#         'pt040']
-# cases = ['pt057',
-#         'pt040','pt098']
+cases = ['pt034','pt061','pt163','pt071','pt005','pt054',
+'pt197','pt040','pt049','pt029','pt094','pt108',
+'pt183','pt155','pt043','pt127','pt173','pt157','pt170',
+'pt207','pt208','pt179','pt018','pt056','pt098',
+'pt171','pt095','pt082','pt057','pt126','pt191',]
 
-pred_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/046-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as024-onDistanceTr-2moreTestImgs/results/'
-baseline_path = '/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/'
-fu_path = '/home/valeria/Prediction_stroke_lesion/HematomaTruetaV7/'
+
+pred_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/049-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as024-onUniform-DATASETV8/results/'
+baseline_path = '/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8_mask_interp/'
+fu_path = '/home/valeria/Prediction_stroke_lesion/HematomaTruetaV8/'
 
 all_measures = []
 
@@ -133,4 +129,4 @@ for case in cases:
     } 
     all_measures.append(measures)
 
-save_to_csv('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/046-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as024-onDistanceTr-2moreTestImgs/results/measures_2newTest.csv',all_measures)
+save_to_csv('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/049-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as024-onUniform-DATASETV8/results/measures.csv',all_measures)
