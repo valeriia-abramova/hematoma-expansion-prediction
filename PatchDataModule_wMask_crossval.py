@@ -11,6 +11,7 @@ import torch
 from monai.metrics import compute_hausdorff_distance
 from torch.utils.data import DataLoader, Dataset
 from scipy.ndimage.morphology import binary_dilation
+from monai.transforms import RandAffine, RandFlip
 
 
 def load_prepared_trueta_dataset(path:str):
@@ -36,62 +37,113 @@ def load_prepared_trueta_dataset(path:str):
     # synthetic dataset 165 patients
     # cases = [f.path for f in os.scandir(path) if f.is_dir()]
     # cases = [case.split('/')[-1] for case in cases]
-    # cases = [case for case in cases if 'pt040' not in case]
-    # cases = [case for case in cases if 'pt018' not in case]
-    # cases = [case for case in cases if 'pt080' not in case]
-    # # cases = cases[:50]
-    # cases = sorted(cases)
-    # testCases = ['pt170', 'pt094', 'pt054', 'pt098', 'pt105']
-    # cases = cases + testCases
-    # testcases = ['pt038', 'pt170', 'pt094', 'pt103', 'pt127', 'pt054', 'pt171',
-    #     'pt095','pt077','pt043', 'pt005',
-    #     'pt108','pt082','pt018']
-    # cases = cases + testcases
-    # cases = sorted(cases)
-    # cases = ['pt098', 'pt057', 'pt040']
-    # cases = ['pt170', 'pt038', 'pt094', 'pt103', 'pt127', 'pt054',
-    #     'pt171','pt095','pt077', 'pt043',
-    #     'pt005','pt108','pt082','pt018',
-    #     'pt057','pt040', 'pt098']
-    # remove first two after previous process terminated and I need to start again
-    cases = ['pt034','pt061','pt163','pt071','pt005','pt054',
-    'pt197','pt040','pt049','pt029','pt094','pt108',
-    'pt183','pt155','pt043','pt127','pt173','pt157','pt170',
-    'pt207','pt208','pt179','pt018','pt056','pt098',
-    'pt171','pt095','pt082','pt057','pt126','pt191',]
-    for case in cases:
-        if '_' in case:
-            patient = case.split('_')[0]
-            basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(patient)))).get_fdata()
-            basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(patient)))).get_fdata() > 0).astype(np.int), axis=0)
-            basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/data/Basal_to_FU1_V8_mask_interp/{}.nii.gz'.format(patient)))).get_fdata()
-            fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'CT_SS.nii.gz'))).get_fdata()
-            fu_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'mask.nii.gz'))).get_fdata()
-            borderMask = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'diff.nii.gz'))).get_fdata()
-            # basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata()
-            # basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata() > 0).astype(np.int), axis=0)
-            # basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(patient)))).get_fdata()
-            # fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/HematomaTruetaV7/{}/FU1/CT_SS.nii.gz'.format(patient)))).get_fdata()
-            # fu_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/HematomaTruetaV7/{}/FU1/hematoma_mask_vicorob_reviewed_reoriented.nii.gz'.format(patient)))).get_fdata()
-            # borderMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/HematomaTruetaV7/{}/FU1/diff.nii.gz'.format(patient)))).get_fdata()
-        else:
-            basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(case)))).get_fdata()
-            basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(case)))).get_fdata() > 0).astype(np.int), axis=0)
-            basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/data/Basal_to_FU1_V8_mask_interp/{}.nii.gz'.format(case)))).get_fdata()
-            fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/HematomaTruetaV8/{}/FU1/CT_SS.nii.gz'.format(case)))).get_fdata()
-            fu_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/HematomaTruetaV8/{}/FU1/hematoma_mask_vicorob_reviewed_reoriented.nii.gz'.format(case)))).get_fdata()
-            borderMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/MIC3/Prediction_stroke_lesion/HematomaTruetaV8/{}/FU1/diff.nii.gz'.format(case)))).get_fdata()
 
-        basal = np.stack([basal, basal_lesionMask], axis = 0)
-        fu1 = np.stack([fu1, fu_lesionMask], axis = 0)
+    # cases = ['pt034','pt061','pt163','pt071','pt005','pt054',
+    # 'pt197','pt040','pt049','pt029','pt094','pt108',
+    # 'pt183','pt155','pt043','pt127','pt173','pt170',
+    # 'pt207','pt208','pt179','pt018','pt056','pt098',
+    # 'pt171','pt095','pt082','pt057','pt126','pt191',]
+    for p in path:
+        if p == path[0]:
+            cases = ['pt034','pt061','pt163','pt071','pt005','pt054',
+                'pt197','pt040','pt049','pt029','pt094','pt108',
+                'pt183','pt155','pt043','pt127','pt173','pt170',
+                'pt207','pt208','pt179','pt018','pt056','pt098',
+                'pt171','pt095','pt082','pt057','pt126','pt191',]
+            for case in cases:
+                basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(case)))).get_fdata().astype(np.float16)
+                basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(case)))).get_fdata() > 0).astype(np.int), axis=0)
+                basal_lesionMask = np.round(nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8_mask_interp/{}.nii.gz'.format(case)))).get_fdata()).astype(np.uint8)
+                fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV8/{}/FU1/CT_SS.nii.gz'.format(case)))).get_fdata().astype(np.float16)
+                fu_lesionMask = np.round(nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV8/{}/FU1/hematoma_mask_vicorob_reviewed_reoriented.nii.gz'.format(case)))).get_fdata()).astype(np.uint8)
+                borderMask = np.round(nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV8/{}/FU1/diff.nii.gz'.format(case)))).get_fdata()).astype(np.uint8)
+                case = case+'_0'
+                basal_full = np.stack([basal, basal_lesionMask], axis = 0)
+                fu1_full = np.stack([fu1, fu_lesionMask], axis = 0)
+
+                del basal_lesionMask
+                del fu_lesionMask
+                del basal
+                del fu1
+                
+
+                prepared_dict[case] = {
+                    'basal': basal_full,
+                    'basalbrainMask': basalbrainMask,
+                    'lesionMask': borderMask,
+                    'fu1': fu1_full
+                    }
+        else:
+            pts = ['pt034','pt061','pt163','pt071','pt005','pt054',
+                'pt197','pt040','pt049','pt029','pt094','pt108',
+                'pt183','pt155','pt043','pt127','pt173','pt170',
+                'pt207','pt208','pt179','pt018','pt056','pt098',
+                'pt171','pt095','pt082','pt057','pt126','pt191',]
+            cases = [f.path for f in os.scandir(path[1]) if f.is_dir()]
+            cases = [case.split('/')[-1] for case in cases]
+
+            cases = [case for case in cases if '_' in case]
+            cases = [case for case in cases for pt in pts if pt in case]
+            for case in cases:
+                basal = nib.funcs.as_closest_canonical(nib.load(os.path.join(path[1],case+'/Basal/CT_SS.nii.gz'))).get_fdata().astype(np.float16)
+                basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join(path[1],case+'/Basal/CT_SS.nii.gz'))).get_fdata() > 0).astype(np.int), axis=0)
+                basal_lesionMask = np.round(nib.funcs.as_closest_canonical(nib.load(os.path.join(path[1],case+'/Basal/mask.nii.gz'))).get_fdata())
+                fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV8/{}/FU1/CT_SS.nii.gz'.format(case.split('_')[0])))).get_fdata().astype(np.float16)
+                fu_lesionMask = np.round(nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV8/{}/FU1/hematoma_mask_vicorob_reviewed_reoriented.nii.gz'.format(case.split('_')[0])))).get_fdata())
+                borderMask = fu_lesionMask - basal_lesionMask
+                borderMask[borderMask == -1.0] = 0.0
+                fu_lesionMask = fu_lesionMask.astype(np.uint8)
+                basal_lesionMask = basal_lesionMask.astype(np.uint8)
+                borderMask = borderMask.astype(np.uint8)
+                # case = case+'_2'
+                basal_full = np.stack([basal, basal_lesionMask], axis = 0)
+                fu1_full = np.stack([fu1, fu_lesionMask], axis = 0)
+
+                del basal_lesionMask
+                del fu_lesionMask
+                del basal
+                del fu1
+                
+
+                prepared_dict[case] = {
+                    'basal': basal_full,
+                    'basalbrainMask': basalbrainMask,
+                    'lesionMask': borderMask,
+                    'fu1': fu1_full
+                    }
+    # for case in cases:
+    #     if '_' in case:
+    #         patient = case.split('_')[0]
+    #         basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(patient)))).get_fdata()
+    #         basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(patient)))).get_fdata() > 0).astype(np.int), axis=0)
+    #         basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8_mask_interp/{}.nii.gz'.format(patient)))).get_fdata()
+    #         fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'CT_SS.nii.gz'))).get_fdata()
+    #         fu_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'mask.nii.gz'))).get_fdata()
+    #         borderMask = nib.funcs.as_closest_canonical(nib.load(os.path.join(path,case,'diff.nii.gz'))).get_fdata()
+    #         # basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata()
+    #         # basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1/{}.nii.gz'.format(patient)))).get_fdata() > 0).astype(np.int), axis=0)
+    #         # basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_mask_interp/{}.nii.gz'.format(patient)))).get_fdata()
+    #         # fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV7/{}/FU1/CT_SS.nii.gz'.format(patient)))).get_fdata()
+    #         # fu_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV7/{}/FU1/hematoma_mask_vicorob_reviewed_reoriented.nii.gz'.format(patient)))).get_fdata()
+    #         # borderMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV7/{}/FU1/diff.nii.gz'.format(patient)))).get_fdata()
+    #     else:
+    #         basal = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(case)))).get_fdata()
+    #         basalbrainMask = np.expand_dims((nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(case)))).get_fdata() > 0).astype(np.int), axis=0)
+    #         basal_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8_mask_interp/{}.nii.gz'.format(case)))).get_fdata()
+    #         fu1 = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV8/{}/FU1/CT_SS.nii.gz'.format(case)))).get_fdata()
+    #         fu_lesionMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV8/{}/FU1/hematoma_mask_vicorob_reviewed_reoriented.nii.gz'.format(case)))).get_fdata()
+    #         borderMask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/HematomaTruetaV8/{}/FU1/diff.nii.gz'.format(case)))).get_fdata()
+
+    #     basal = np.stack([basal, basal_lesionMask], axis = 0)
+    #     fu1 = np.stack([fu1, fu_lesionMask], axis = 0)
         
 
-        prepared_dict[case] = {
-            'basal': basal,
-            'basalbrainMask': basalbrainMask,
-            'lesionMask': borderMask,
-            'fu1': fu1
-            }
+    #     prepared_dict[case] = {
+    #         'basal': basal,
+    #         'basalbrainMask': basalbrainMask,
+    #         'lesionMask': borderMask,
+    #         'fu1': fu1
+    #         }
     return prepared_dict
 
 
@@ -206,6 +258,22 @@ def extract_stroke_patch(instructions: dict, data: dict):
     # 2D/3D compatibility
     # image_patch = np.squeeze(image_patch, axis=tuple(ax for ax in range(-3, 0, 1) if image_patch.shape[ax] == 1))
     # lesion_patch = np.squeeze(lesion_patch, axis=tuple(ax for ax in range(-3, 0, 1) if lesion_patch.shape[ax] == 1))
+
+    if do_data_augmentation:
+        affine = RandAffine(prob=0.75, rotate_range = (0.5, 0.5,0.2), padding_mode='zeros', as_tensor_output=False)
+        flip = RandFlip(prob = 0.75, spatial_axis=1)
+        concatenated_patches = np.concatenate((image_patch, gt_patch), axis=0)
+        concatenated_patches = affine(concatenated_patches, mode='bilinear')
+        concatenated_patches = flip(concatenated_patches)
+
+        num_channels_gt = gt_patch.shape[0]
+        image_patch = concatenated_patches[:-num_channels_gt, :, :,:].numpy()
+        gt_patch = concatenated_patches[-num_channels_gt:, :, :,:].numpy()
+
+        # Round bilinearly interpolated labels
+        gt_patch[1] = (gt_patch[1] > 0.5).astype(int)
+        image_patch[1] = (image_patch[1] > 0.5).astype(int)
+
 
     # Normalize the image_patch
 
@@ -456,25 +524,64 @@ def split_stroke_crossvalidation_folds(num_folds: int, prepared_dict: dict):
 
     crossvalidation_folds_dict = {}
 
-    Dataset = [case_id for case_id, info in prepared_dict.items()]    
-    assert len(Dataset) == len(prepared_dict.items())
+    # Dataset = [case_id for case_id, info in prepared_dict.items()]    
+    # assert len(Dataset) == len(prepared_dict.items())
+
+    # cases_per_split = int(np.ceil(len(Dataset)/num_folds))
+
+    # crossval_list = [Dataset[cases_per_split * fold_index:cases_per_split * fold_index + cases_per_split] for fold_index in range(num_folds)]
+    # crossval_list = sorted(crossval_list)
+    # for fold in range(num_folds):
+    #     crossval_list_fold = crossval_list.copy()
+    #     val_list = crossval_list_fold[fold]
+    #     del crossval_list_fold[fold]
+    #     train_list = crossval_list_fold
+        
+    #     crossvalidation_folds_dict[fold] = {
+    #         'train' : sum(train_list, []),
+    #         'test' : val_list
+    #     }
+
+    # return crossvalidation_folds_dict 
+
+    # when training on real cases with baseline vars
+    Dataset = [case_id.split('_')[0] for case_id, info in prepared_dict.items()]
+    Dataset = list(set(Dataset))    
+    assert 6*len(Dataset) == len(prepared_dict.items())
 
     cases_per_split = int(np.ceil(len(Dataset)/num_folds))
 
     crossval_list = [Dataset[cases_per_split * fold_index:cases_per_split * fold_index + cases_per_split] for fold_index in range(num_folds)]
 
+    crossval_list = sorted(crossval_list)
+
+    # done = [['pt040'], ['pt094'], ['pt034'], ['pt061'], ['pt071'], ['pt191'],['pt183'], ['pt179'], 
+    #           ['pt163'],  ['pt098'], ['pt155'], ['pt018'], ['pt108'], ['pt127'], ['pt171']]
+
     for fold in range(num_folds):
         crossval_list_fold = crossval_list.copy()
         val_list = crossval_list_fold[fold]
+        # if val_list not in done:
+        #     continue
         del crossval_list_fold[fold]
         train_list = crossval_list_fold
-        
+        for i in range(6):
+            train_list += [[case[0]+'_'+str(i)] for case in train_list]
+        # train_list_1 = [[case[0]+'_1'] for case in train_list]
+        # train_list_2 = [[case[0]+'_2'] for case in train_list]
+        # train_list = train_list_1 + train_list_2
+
         crossvalidation_folds_dict[fold] = {
             'train' : sum(train_list, []),
             'test' : val_list
         }
+    
+    new_dict = {}
 
-    return crossvalidation_folds_dict 
+    for i in range(len(list(crossvalidation_folds_dict.values()))):
+        new_dict[i] = list(crossvalidation_folds_dict.values())[i]
+
+    return new_dict 
     
 def resample_regular(l: list, n: int):
     """
@@ -576,7 +683,8 @@ class PatchDataModule_wMask_crossval(pl.LightningDataModule):
         return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
     
     def get_test_cases(self):
-        return [os.path.join(self.prepared_data_path, case) for case in self.test_dict]
+        # return [os.path.join(self.prepared_data_path, case) for case in self.test_dict]
+        return [os.path.join(self.test_path, case) for case in self.test_dict]
     
     def compute_image_measures(self, case_num, inference_result, header):
         inference_result = np.round(inference_result).astype('int') 
@@ -600,8 +708,9 @@ class PatchDataModule_wMask_crossval(pl.LightningDataModule):
         self.train_val_dict = {case_id: case_values for case_id, case_values in self.prepared_dict.items() 
                                 if case_id in self.fold_split[self.fold_index]['train'][:][:]}
 
-        self.test_dict = {case_id: case_values for case_id, case_values in self.prepared_dict.items() 
-                                if case_id in self.fold_split[self.fold_index]['test']}  
+        self.test_dict = {case_id.split('_')[0]: case_values for case_id, case_values in self.prepared_dict.items() 
+                                if case_id.split('_')[0] in self.fold_split[self.fold_index]['test']}
+        print('Test case in this fold ', self.test_dict.keys())
 
         train_dict = dict(list(self.train_val_dict.items())[:int(np.round(len(self.train_val_dict) * (1.0 - self.validation_fraction)))])
         val_dict = dict(list(self.train_val_dict.items())[int(np.round(len(self.train_val_dict) * (1.0 - self.validation_fraction))):])         

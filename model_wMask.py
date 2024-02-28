@@ -9,7 +9,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from PatchDataModule import *
+from PatchDataModule_wMask import *
 from monai.inferers import sliding_window_inference
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
@@ -184,8 +184,9 @@ class Regressor(pl.LightningModule):
 
         self.max_pool = nn.MaxPool3d(kernel_size=2, stride = 2)
 
-        self.fc1 = nn.Linear(3*8*8*8, 12) # multiply channels by the output dimensions
+        # self.fc1 = nn.Linear(3*8*8*8, 12) # multiply channels by the output dimensions
         # self.fc1 = nn.Linear(3*32*32*2, 12) # for input size 128,128,8
+        self.fc1 = nn.Linear(3*16*16*16, 12) # for input size 64,64,64
         self.fc2 = nn.Linear(12,output_channels)
 
         self.fc2.weight.data.zero_()
@@ -205,8 +206,8 @@ class Regressor(pl.LightningModule):
         x1 = self.max_pool(x)# 
         x2 = self.max_pool(x1)
 
-        x4 = x2.view(-1, 3*8*8*8)
-        # x4 = x2.view(-1, 3*32*32*2)
+        # x4 = x2.view(-1, 3*8*8*8)
+        x4 = x2.view(-1, 3*16*16*16)
 
         x5 = self.fc1(x4)
         x6 = self.fc2(x5)
@@ -312,9 +313,9 @@ class FullModel(pl.LightningModule):
             print(f"> Segmenting test case {case_num} ({n+1}/{len(test_cases)})")
             
 
-            img = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(case_num)))).get_fdata()
+            img = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8/{}.nii.gz'.format(case_num)))).get_fdata().astype(np.float16)
             # img = (img - np.min(img))/(np.max(img) - np.min(img))
-            mask = nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8_mask_interp/{}.nii.gz'.format(case_num)))).get_fdata()
+            mask = np.round(nib.funcs.as_closest_canonical(nib.load(os.path.join('/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8_mask_interp/{}.nii.gz'.format(case_num)))).get_fdata()).astype(np.uint8)
             # img = np.expand_dims(img, axis=0)
 
             norm_params = find_normalization_parameters(img)
@@ -323,21 +324,26 @@ class FullModel(pl.LightningModule):
             norm_img = np.stack([norm_img, mask], axis = 0)
             norm_img = np.expand_dims(norm_img, axis=0)
 
+            device = torch.device('cuda')
+
             self.eval()
+            self.cuda()
             with torch.no_grad():
-                prediction = sliding_window_inference(inputs=torch.tensor(norm_img), 
+                prediction = sliding_window_inference(inputs=torch.tensor(norm_img).to(device), 
                                                     roi_size=Stroke_DM.patch_size, 
                                                     sw_batch_size=Stroke_DM.batch_size,
+                                                    # device=torch.cuda._device,
+                                                    # sw_device=torch.device('cuda'),
                                                     predictor=self,
                                                     overlap=0.6, progress=True, mode='gaussian') # Self calls the forward method of the model
 
 
             # Convert to numpy and Round to save disk space
             # prediction1 = np.round(prediction[0, 1, :, :, :].detach().cpu().numpy(), decimals=4)
-            prediction1 = prediction[1][0,0,:,:,:].numpy() # the final prediction
-            prediction_mask = prediction[1][0,1,:,:,:].numpy()
+            prediction1 = prediction[1][0,0,:,:,:].detach().cpu().numpy() # the final prediction
+            prediction_mask = prediction[1][0,1,:,:,:].detach().cpu().numpy()
             prediction_mask = np.where(prediction_mask > 0.5, 1, 0)
-            prediction2 = prediction[0].permute(2,3,4,0,1).numpy() # the dvf
+            prediction2 = prediction[0].permute(2,3,4,0,1).detach().cpu().numpy() # the dvf
             prediction_mask[img == 0.0] = 0.0
             prediction1[img == 0.0] = 0.0
      
