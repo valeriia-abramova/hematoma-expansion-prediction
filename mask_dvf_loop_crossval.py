@@ -1,5 +1,4 @@
 import json
-
 import numpy as np
 from PatchDataModule_wMask_crossval import *
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, ModelSummary
@@ -7,13 +6,12 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 from model_wMask import *
 from monai.losses.dice import DiceLoss
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 torch.cuda.empty_cache()
 
-prepared_data_path = ['/home/valeria/Prediction_stroke_lesion/data/Basal_to_FU1_V8/', '/home/valeria/Prediction_stroke_lesion/data/Synthetic_real_basal/']
-test_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/data/'
-results_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/083-patchBalanced80-ppi500-adam00001-bs8-l1loss-ps646464-border-mask-1000epochs-as024-leaveOneOut-onReal-noDA-5vars-noPt157/results/'
-experiment_path = '/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/083-patchBalanced80-ppi500-adam00001-bs8-l1loss-ps646464-border-mask-1000epochs-as024-leaveOneOut-onReal-noDA-5vars-noPt157/experiment/'
+prepared_data_path = ['path_to_real_data/', 'path_to_synthetic_data/']
+test_path = 'path_to_test_data/'
+results_path = 'path_to_experiment/results/'
+experiment_path = 'path_to_experiment/experiment/'
 MAX_EPOCHS = 150
 PATIENCE = 10
 NUM_FOLDS = 30
@@ -124,66 +122,28 @@ for fold in range(NUM_FOLDS):
 
 
     model = FullModel(2,3,my_dvfLoss,my_simloss, my_segloss)
-    # model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/024-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as018and019-wopt018pt040intrain/experiment/Model_checkpoints/trueta-epoch=74.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
-    # model.requires_grad_(True)
-    # model.unet.Bottleneck.requires_grad_(False)
-    # model.unet.Conv1.requires_grad_(True)
-    # model.unet.Up3.requires_grad_(True)
-    # model.unet.UpConv2.requires_grad_(True)
-    # model.unet.Up2.requires_grad_(True)
-    # model.unet.UpConv1.requires_grad_(True)
-    # model.unet.Up1.requires_grad_(True)
-    # model.unet.Conv5.requires_grad_(True)
-    # model.regressor.requires_grad_(True)
-    # layers = ['unet.Conv1.conv.3', 'unet.Conv2.conv.3', 'unet.Conv3.conv.3','unet.Bottleneck.conv.3','unet.UpConv1.conv.3','unet.UpConv2.conv.3','unet.UpConv3.conv.3']
-    # model = medcam.inject(model, output_dir="/home/valeria/Prediction_stroke_lesion//SynthesisGrowth/024-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask-1000epochs-as018and019-wopt018pt040intrain/gradcam_maps/", backend="gcam" ,save_maps=True, layer = layers)
 
+    trainer = pl.Trainer(max_epochs=MAX_EPOCHS,
+                        strategy="dp",
+                        accelerator='gpu', devices=[0,1], 
+                        callbacks=[early_stopping_callback, checkpoint_callback,ModelSummary(max_depth=-1)],
+                        deterministic=False,
+                        fast_dev_run=False, 
+                        enable_model_summary=False,
+                        logger=logger)
 
-    # trainer = pl.Trainer(max_epochs=MAX_EPOCHS,
-    #                     strategy="dp", #remove
-    #                     accelerator='gpu', devices=[0,1], 
-    #                     callbacks=[early_stopping_callback, checkpoint_callback,ModelSummary(max_depth=-1)],
-    #                     deterministic=False,
-    #                     fast_dev_run=False, 
-    #                     enable_model_summary=False,
-    #                     logger=logger)
-
-    # if fold == 19:
-    #     trainer.fit(model, StrokeDM, ckpt_path='/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/083-patchBalanced80-ppi500-adam00001-bs8-l1loss-ps646464-border-mask-1000epochs-as024-leaveOneOut-onReal-noDA-5vars-noPt157/experiment/Model_checkpoints/fold19/trueta-epoch=48.ckpt')
-    #     # model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/083-patchBalanced80-ppi500-adam00001-bs8-l1loss-ps646464-border-mask-1000epochs-as024-leaveOneOut-onReal-noDA-5vars-noPt157/experiment/Model_checkpoints/fold14/trueta-epoch=48.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
-    # else:
-    #     trainer.fit(model, StrokeDM)
-
-    # trainer.fit(model, StrokeDM)
-    # if fold == 0:
-    #     model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/050-patchBalanced80-ppi500-adam00001-bs16-l1loss-ps323232-border-mask-1000epochs-as024-leaveOneOut-onTest/experiment/Model_checkpoints/fold0/trueta-epoch=178.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
-    # if fold == 1:
-    #     model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/050-patchBalanced80-ppi500-adam00001-bs16-l1loss-ps323232-border-mask-1000epochs-as024-leaveOneOut-onTest/experiment/Model_checkpoints/fold1/trueta-epoch=190.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
-    # if fold == 2:
-    #     model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/050-patchBalanced80-ppi500-adam00001-bs16-l1loss-ps323232-border-mask-1000epochs-as024-leaveOneOut-onTest/experiment/Model_checkpoints/fold2/trueta-epoch=160.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
-    # if fold == 3:
-    #     model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/050-patchBalanced80-ppi500-adam00001-bs16-l1loss-ps323232-border-mask-1000epochs-as024-leaveOneOut-onTest/experiment/Model_checkpoints/fold3/trueta-epoch=94.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
-    # if fold == 4:
-    #     model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/050-patchBalanced80-ppi500-adam00001-bs16-l1loss-ps323232-border-mask-1000epochs-as024-leaveOneOut-onTest/experiment/Model_checkpoints/fold4/trueta-epoch=112.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
-    # if fold == 5:
-    #     model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/050-patchBalanced80-ppi500-adam00001-bs16-l1loss-ps323232-border-mask-1000epochs-as024-leaveOneOut-onTest/experiment/Model_checkpoints/fold5/trueta-epoch=127.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
-    # if fold == 6:
-    #     model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/050-patchBalanced80-ppi500-adam00001-bs16-l1loss-ps323232-border-mask-1000epochs-as024-leaveOneOut-onTest/experiment/Model_checkpoints/fold6/trueta-epoch=185.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
-
-    
-
-    # model = FullModel.load_from_checkpoint('/home/valeria/Prediction_stroke_lesion/SynthesisGrowth/018-patchBalanced80-ppi500-adam00001-bs32-l1loss-ps323232-border-mask/experiment/Model_checkpoints/trueta-epoch=99.ckpt',in_channels = 2, out_channels = 3, dvf_loss = my_dvfLoss, sim_loss = my_simloss, seg_loss = my_segloss)
+    trainer.fit(model, StrokeDM)
     StrokeDM.setup(stage='test')
 
 
     test_cases = StrokeDM.get_test_cases()
-    # model.return_activated_output = False
-    # image_measures.update(
-    #     model.infer_test_images(test_cases=test_cases, 
-    #                             Stroke_DM=StrokeDM, 
-    #                             filepath_out=results_path))
+
+    image_measures.update(
+        model.infer_test_images(test_cases=test_cases, 
+                                Stroke_DM=StrokeDM, 
+                                filepath_out=results_path))
 
 
 
-# with open(os.path.join(results_path, 'image_measures.json'), 'w') as f:
-#         json.dump(image_measures, f, indent=2)
+with open(os.path.join(results_path, 'image_measures.json'), 'w') as f:
+        json.dump(image_measures, f, indent=2)
