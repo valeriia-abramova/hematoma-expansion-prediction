@@ -11,4 +11,4 @@ The following python files are available:
   - This file contains the code for the model to predict hematoma expansion pattern
       
 - [ ] mask_dvf_loop_crossval.py
-  - This file contains the main code for running training
+  - This file contains the main code to run training
